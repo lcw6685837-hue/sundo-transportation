@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SUNDOCHEM 차량별 월간 집계</title>
+
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+    <!-- Tailwind CSS & FontAwesome -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
+
+    <!-- 스타일 -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="p-4 lg:p-6 min-h-screen flex flex-col items-center">
+
+    <div class="w-full max-w-[900px] flex-1 flex flex-col">
+
+        <!-- 상단 헤더 -->
+        <div class="flex flex-col gap-4 mb-4">
+
+            <div class="flex justify-between items-center w-full">
+                <a href="index.html" class="no-print bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded border border-slate-600 font-bold transition flex items-center gap-2 text-xs shadow-md">
+                    <i class="fas fa-arrow-left"></i> 납품현황으로
+                </a>
+
+                <!-- 집계월 선택 박스 -->
+                <div class="flex items-center gap-3 bg-[#1e293b] px-6 py-2 rounded-full border border-slate-600 shadow-inner print:border-none print:bg-transparent shrink-0">
+                    <span class="text-slate-400 font-bold text-sm tracking-widest print:text-black">집계월:</span>
+                    <input type="month" id="summary-month" class="bg-transparent border-none text-xl font-black text-amber-400 outline-none cursor-pointer print:text-black text-center">
+                </div>
+
+                <div class="flex gap-2 no-print">
+                    <button onclick="window.print()" class="bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded border border-slate-600 font-bold transition flex items-center gap-2 text-xs shadow-md"><i class="fas fa-print"></i> 인쇄</button>
+                    <button onclick="logout()" class="bg-rose-900 hover:bg-rose-800 text-white px-3 py-1.5 rounded border border-rose-700 font-bold transition flex items-center gap-2 text-xs shadow-md"><i class="fas fa-right-from-bracket"></i> 로그아웃</button>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4 bg-pink-950/20 px-6 py-3 rounded-2xl border border-pink-500/30 shadow-[0_0_15px_rgba(236,72,153,0.15)]">
+                <div class="bg-pink-500/20 p-2.5 rounded-xl border border-pink-500/50">
+                    <i class="fas fa-chart-column text-[2.5rem] text-pink-400 no-print"></i>
+                </div>
+                <h1 class="text-[2.2rem] font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-rose-400 tracking-widest drop-shadow-md print:text-2xl print:text-black">차량번호별 월간 집계</h1>
+            </div>
+        </div>
+
+        <div id="summary-status" class="text-slate-400 text-sm mb-2 no-print"></div>
+
+        <!-- 집계 결과 테이블 -->
+        <div class="summary-table-wrapper border-[3px] border-pink-500 rounded-xl overflow-hidden shadow-[0_0_20px_rgba(236,72,153,0.2)] bg-[#0f172a]">
+            <div class="summary-table">
+                <div class="summary-row summary-header">
+                    <div class="summary-cell">차량번호</div>
+                    <div class="summary-cell">운행 건수</div>
+                    <div class="summary-cell">총 납품량</div>
+                </div>
+
+                <div id="summary-tbody"></div>
+
+                <div class="summary-row summary-total">
+                    <div class="summary-cell">합 계</div>
+                    <div id="summary-total-count" class="summary-cell">0건</div>
+                    <div id="summary-total-qty" class="summary-cell">0kg</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase 및 데이터 연동 스크립트 -->
+    <script src="firebase-config.js"></script>
+    <script src="summary.js"></script>
+</body>
+</html>

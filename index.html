@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SUNDOCHEM 납품현황</title>
+    
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+    <!-- Tailwind CSS & FontAwesome -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
+
+    <!-- 스타일 -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="p-4 lg:p-6 min-h-screen flex flex-col items-center">
+
+    <div class="w-full max-w-[1500px] flex-1 flex flex-col">
+        
+        <!-- 상단 헤더 및 결재란 -->
+        <div class="flex flex-col gap-4 mb-4">
+            
+            <div class="flex justify-between items-center w-full relative z-20">
+                <div class="flex-1 flex items-center gap-3">
+                    <!-- 날짜 이동 좌우 화살표 버튼 -->
+                    <div class="flex items-center bg-[#1e293b] p-1 rounded-xl border border-slate-600 shadow-md no-print">
+                        <button onclick="changeDate(-1)" class="w-9 h-9 flex items-center justify-center bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-amber-400 rounded-lg transition font-bold" title="전날로 이동 (Alt+←)">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <button onclick="goToday()" class="px-2.5 h-9 text-xs font-bold text-slate-300 hover:text-white transition" title="오늘 날짜로 이동">
+                            오늘
+                        </button>
+                        <button onclick="changeDate(1)" class="w-9 h-9 flex items-center justify-center bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-amber-400 rounded-lg transition font-bold" title="다음날로 이동 (Alt+→)">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 날짜 선택 박스 -->
+                <div class="flex items-center gap-3 bg-[#1e293b] px-6 py-2 rounded-full border border-slate-600 shadow-inner print:border-none print:bg-transparent shrink-0">
+                    <span class="text-slate-400 font-bold text-sm tracking-widest print:text-black">근무일자:</span>
+                    <input type="date" id="log-date" class="bg-transparent border-none text-xl font-black text-amber-400 outline-none cursor-pointer print:text-black text-center">
+                    <span id="log-day" class="text-xl font-black text-amber-400 ml-1 print:text-black"></span>
+                </div>
+                
+                <!-- 상단 제어 버튼 -->
+                <div class="flex-1 flex justify-end gap-2 no-print shrink-0">
+                    <a href="summary.html" class="bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded border border-slate-600 font-bold transition flex items-center gap-2 text-xs shadow-md"><i class="fas fa-chart-column"></i> 월간집계</a>
+                    <button onclick="toggleFullScreen()" class="bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded border border-slate-600 font-bold transition flex items-center gap-2 text-xs shadow-md"><i class="fas fa-expand"></i> 전체화면</button>
+                    <button onclick="window.print()" class="bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded border border-slate-600 font-bold transition flex items-center gap-2 text-xs shadow-md"><i class="fas fa-print"></i> 인쇄</button>
+                    <button onclick="logout()" class="bg-rose-900 hover:bg-rose-800 text-white px-3 py-1.5 rounded border border-rose-700 font-bold transition flex items-center gap-2 text-xs shadow-md"><i class="fas fa-right-from-bracket"></i> 로그아웃</button>
+                </div>
+            </div>
+
+            <!-- 타이틀 및 결재란 -->
+            <div class="flex justify-between items-end">
+                
+                <div class="flex items-center gap-4 bg-pink-950/20 px-6 py-3 rounded-2xl border border-pink-500/30 shadow-[0_0_15px_rgba(236,72,153,0.15)]">
+                    <div class="bg-pink-500/20 p-2.5 rounded-xl border border-pink-500/50">
+                        <i class="fas fa-clipboard-list text-[2.5rem] text-pink-400 no-print"></i>
+                    </div>
+                    <h1 class="text-[3rem] font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-rose-400 tracking-widest drop-shadow-md print:text-2xl print:text-black">납 품 현 황</h1>
+                </div>
+
+                <!-- 결재란 -->
+                <div class="w-[550px] flex h-[121px] sign-box border border-slate-600 rounded-lg overflow-hidden shadow-inner print:shadow-none">
+                    <div class="w-12 bg-slate-800 flex flex-col items-center justify-center text-slate-300 font-black text-base tracking-widest sign-title-box leading-tight border-r border-slate-600 print:bg-transparent print:text-black">
+                        <span>결</span><span>재</span>
+                    </div>
+                    <div class="grid grid-cols-4 bg-[#0f172a] print:bg-transparent flex-1">
+                        <div class="bg-slate-700/60 print:bg-transparent border-r border-b border-slate-600 flex items-center justify-center py-1.5 text-slate-300 print:text-black font-bold text-sm sign-label">담 당</div>
+                        <div class="bg-slate-700/60 print:bg-transparent border-r border-b border-slate-600 flex items-center justify-center py-1.5 text-slate-300 print:text-black font-bold text-sm sign-label">검 토 1</div>
+                        <div class="bg-slate-700/60 print:bg-transparent border-r border-b border-slate-600 flex items-center justify-center py-1.5 text-slate-300 print:text-black font-bold text-sm sign-label">검 토 2</div>
+                        <div class="bg-slate-700/60 print:bg-transparent border-b border-slate-600 flex items-center justify-center py-1.5 text-slate-300 print:text-black font-bold text-sm sign-label">승 인</div>
+                        
+                        <div class="border-r border-slate-600 sign-input-wrapper"><textarea id="job_sign_draft" class="att-cell text-center text-slate-200 print:text-black font-bold sync-item pt-4" placeholder="(서명)" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></textarea></div>
+                        <div class="border-r border-slate-600 sign-input-wrapper"><textarea id="job_sign_rev1" class="att-cell text-center text-slate-200 print:text-black font-bold sync-item pt-4" placeholder="(서명)" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></textarea></div>
+                        <div class="border-r border-slate-600 sign-input-wrapper"><textarea id="job_sign_rev2" class="att-cell text-center text-slate-200 print:text-black font-bold sync-item pt-4" placeholder="(서명)" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></textarea></div>
+                        <div class="sign-input-wrapper"><textarea id="job_sign_appr" class="att-cell text-center text-slate-200 print:text-black font-bold sync-item pt-4" placeholder="(서명)" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></textarea></div>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+
+        <!-- 메인 납품현황 테이블 -->
+        <div class="main-table-wrapper border-[3px] border-pink-500 rounded-xl overflow-hidden flex-col shadow-[0_0_20px_rgba(236,72,153,0.2)] bg-[#0f172a]">
+
+            <div class="delivery-table">
+                <!-- 헤더 -->
+                <div class="delivery-row delivery-header">
+                    <div class="delivery-cell">계량일자</div>
+                    <div class="delivery-cell">납품월</div>
+                    <div class="delivery-cell">차량번호</div>
+                    <div class="delivery-cell">납품처</div>
+                    <div class="delivery-cell">납품량</div>
+                    <div class="delivery-cell">받은날짜</div>
+                    <div class="delivery-cell">비 고</div>
+                </div>
+
+                <!-- 데이터 입력 행 (1~10) -->
+                <div class="delivery-row">
+                    <div class="delivery-cell"><input type="text" id="deliv1_gauge_date" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv1_out_date" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv1_vehicle" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv1_dest" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv1_qty" class="att-cell sync-item qty-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv1_recv_date" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv1_note" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                </div>
+                <div class="delivery-row">
+                    <div class="delivery-cell"><input type="text" id="deliv2_gauge_date" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv2_out_date" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv2_vehicle" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv2_dest" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv2_qty" class="att-cell sync-item qty-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv2_recv_date" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv2_note" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                </div>
+                <div class="delivery-row">
+                    <div class="delivery-cell"><input type="text" id="deliv3_gauge_date" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv3_out_date" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv3_vehicle" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv3_dest" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv3_qty" class="att-cell sync-item qty-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv3_recv_date" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv3_note" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                </div>
+                <div class="delivery-row">
+                    <div class="delivery-cell"><input type="text" id="deliv4_gauge_date" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv4_out_date" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv4_vehicle" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv4_dest" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv4_qty" class="att-cell sync-item qty-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv4_recv_date" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv4_note" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                </div>
+                <div class="delivery-row">
+                    <div class="delivery-cell"><input type="text" id="deliv5_gauge_date" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv5_out_date" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv5_vehicle" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv5_dest" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv5_qty" class="att-cell sync-item qty-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv5_recv_date" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv5_note" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                </div>
+                <div class="delivery-row">
+                    <div class="delivery-cell"><input type="text" id="deliv6_gauge_date" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv6_out_date" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv6_vehicle" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv6_dest" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv6_qty" class="att-cell sync-item qty-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv6_recv_date" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv6_note" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                </div>
+                <div class="delivery-row">
+                    <div class="delivery-cell"><input type="text" id="deliv7_gauge_date" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv7_out_date" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv7_vehicle" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv7_dest" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv7_qty" class="att-cell sync-item qty-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv7_recv_date" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv7_note" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                </div>
+                <div class="delivery-row">
+                    <div class="delivery-cell"><input type="text" id="deliv8_gauge_date" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv8_out_date" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv8_vehicle" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv8_dest" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv8_qty" class="att-cell sync-item qty-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv8_recv_date" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv8_note" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                </div>
+                <div class="delivery-row">
+                    <div class="delivery-cell"><input type="text" id="deliv9_gauge_date" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv9_out_date" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv9_vehicle" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv9_dest" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv9_qty" class="att-cell sync-item qty-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv9_recv_date" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv9_note" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                </div>
+                <div class="delivery-row">
+                    <div class="delivery-cell"><input type="text" id="deliv10_gauge_date" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv10_out_date" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv10_vehicle" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv10_dest" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv10_qty" class="att-cell sync-item qty-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv10_recv_date" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                    <div class="delivery-cell"><input type="text" id="deliv10_note" class="att-cell sync-item text-center" spellcheck="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" autocomplete="off"></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Firebase 및 데이터 연동 스크립트 -->
+    <script src="firebase-config.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
